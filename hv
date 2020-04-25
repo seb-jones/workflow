@@ -1,12 +1,22 @@
 #!/bin/bash -x
 
+#
+# GLOBAL VARIABLES
+#
+
 ACCESS_TOKEN="2296783.pt._hMMcblHJJnRc9W1IscXBQTV5YZubZl0LtAZ7Wd8LBjywW-zr5nigXW0Ev3BGrhBNBfxRqHioAccH7Rn8LwtnA"
 
 ACCOUNT_ID="1283044"
 
-CURRENT_PROJECT_FILE=".current-project"
+BASE_DIRECTORY=$(dirname "$0")
 
-CURRENT_TASK_FILE=".current-task"
+CURRENT_PROJECT_FILE="$BASE_DIRECTORY/.current-project"
+
+CURRENT_TASK_FILE="$BASE_DIRECTORY/.current-task"
+
+#
+# FUNCTIONS
+#
 
 function get() {
     curl --silent "$1" \
@@ -16,7 +26,7 @@ function get() {
 }
 
 function post() {
-    curl -v "$1" \
+    curl --verbose "$1" \
       -H "Authorization: Bearer $ACCESS_TOKEN" \
       -H "Harvest-Account-Id: $ACCOUNT_ID" \
       -H "User-Agent: Test App (therealsebshady@googlemail.com)" \
@@ -85,31 +95,49 @@ function set_current_task() {
     echo "$1" > "$CURRENT_TASK_FILE"
 }
 
+#
+# SCRIPT
+#
+
+if [[ $# -eq 0 ]]; then
+    printf "Usage: %s COMMAND [OPTIONS].\n\n" "$0"
+    printf "Availble Commands:\n\n"
+    printf "lp\t\tList available projects.\n"
+    printf "lt\t\tList available tasks.\n"
+    printf "gcp\t\tGet the ID of the current project.\n"
+    printf "scp PROJECT_ID\tSet the current project to PROJECT_ID.\n"
+    printf "gct\t\tGet the ID of the current task.\n"
+    printf "sct TASK_ID\tSet the current task to TASK_ID.\n" exit 1
+    printf "st  NOTES [URL]\tStart a new timer on the current project and\n"
+    printf "\t\tcurrent task with NOTES and optionally linked to [URL].\n" 
+    exit 1
+fi
+
 case $1 in
-    "p" )
+    "lp" )
         list_projects
         ;;
-    "t" )
+    "lt" )
         list_tasks
         ;;
 
-    "cp" )
+    "gcp" )
         get_current_project
         ;;
 
-    "sp" )
+    "scp" )
         set_current_project "$2"
         ;;
 
-    "ct" )
+    "gct" )
         get_current_task
         ;;
 
-    "st" )
+    "sct" )
         set_current_task "$2"
         ;;
 
-    "sti" )
+    "st" )
         start_timing "$2" "$3"
         ;;
 esac
