@@ -1,0 +1,140 @@
+#!/bin/bash 
+
+#
+# GLOBAL VARIABLES
+#
+
+ACCESS_TOKEN="E6EfD8E9AshAbam9xbA8"
+
+BASE_DIRECTORY=$(dirname "$0")
+
+CURRENT_USER_FILE="$BASE_DIRECTORY/.gitlab-user"
+
+CURRENT_PROJECT_FILE="$BASE_DIRECTORY/.gitlab-project"
+
+USER_ID=""
+
+#
+# FUNCTIONS
+#
+
+# https://stackoverflow.com/questions/47050589/create-url-friendly-slug-with-pure-bash/49035906#49035906
+function slugify () {
+    echo "$1" | iconv -t ascii//TRANSLIT | sed -r s/[~\^]+//g | sed -r s/[^a-zA-Z0-9]+/-/g | sed -r s/^-+\|-+$//g | tr A-Z a-z
+}
+
+function get() {
+    curl --silent "$1" \
+      -H "Private-Token: $ACCESS_TOKEN"
+}
+
+function post() {
+    curl --verbose "$1" \
+      -H "Private-Token: $ACCESS_TOKEN" \
+      -X POST
+}
+
+function list_projects() {
+    get "https://gitlab.com/api/v4/users/$USER_ID/projects" | jq -r '.[] | (.id | tostring) + " " + .name'
+}
+
+function get_current_project() {
+    if [[ -f "$CURRENT_PROJECT_FILE" ]]; then
+        cat "$CURRENT_PROJECT_FILE"
+    fi
+}
+
+function set_current_project() {
+    echo "$1" > "$CURRENT_PROJECT_FILE"
+}
+
+function new_issue() {
+    TEMP_FILE=$(mktemp)
+
+    "${EDITOR:-vi}" "$TEMP_FILE"
+
+    cat "$TEMP_FILE"
+
+    PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
+
+    TITLE=$(cat "$TEMP_FILE")
+
+    curl -X POST \
+     -H "Private-Token: $ACCESS_TOKEN" \
+     --data-urlencode "title=$TITLE" \
+     "https://gitlab.com/api/v4/projects/$PROJECT_ID/issues" \
+     | jq -r '(.iid | tostring) + " " + .title'
+}
+
+function new_branch() {
+    PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
+
+    NAME=$(slugify "$1")
+
+    curl -X POST \
+     -H "Private-Token: $ACCESS_TOKEN" \
+     --data-urlencode "branch=$NAME" \
+     --data-urlencode "ref=develop" \
+     "https://gitlab.com/api/v4/projects/$PROJECT_ID/repository/branches"
+
+    echo "$NAME"
+}
+
+function new_merge_request() {
+    PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
+
+    if [[ ! -z $3 ]]; then
+        DESCRIPTION="Closes #$3"
+    fi
+
+    curl -X POST \
+     -H "Private-Token: $ACCESS_TOKEN" \
+     --data-urlencode "source_branch=$1" \
+     --data-urlencode "target_branch=develop" \
+     --data-urlencode "title=$2" \
+     --data-urlencode "description=$DESCRIPTION" \
+     "https://gitlab.com/api/v4/projects/$PROJECT_ID/merge_requests"
+}
+
+#
+# SCRIPT
+#
+
+if [[ ! -f "$CURRENT_USER_FILE" ]]; then
+    get "https://gitlab.com/api/v4/user" | jq '.id' > "$CURRENT_USER_FILE"
+fi
+
+USER_ID=$(cat "$CURRENT_USER_FILE")
+
+if [[ $# -eq 0 ]]; then
+    printf "Usage: %s COMMAND [OPTIONS].\n\n" "$0"
+    printf "Availble Commands:\n\n"
+    printf "lp\t\t\t\tList available projects.\n"
+    printf "gcp\t\t\t\tGet the ID of the current project.\n"
+    printf "scp PROJECT_ID\t\t\tSet the current project to PROJECT_ID.\n"
+    printf "ni\t\t\t\tCreate a new issue in the current project.\n"
+    printf "nb NAME\t\t\t\tCreate a new branch of develop named NAME.\n"
+    printf "nmr BRANCH TITLE ISSUE_NUMBER\tCreate a new merge request for BRANCH named TITLE that closes the issue identified by ISSUE_NUMBER.\n"
+    exit 1
+fi
+
+case $1 in
+    "lp" )
+        list_projects
+        ;;
+    "gcp" )
+        get_current_project
+        ;;
+    "scp" )
+        set_current_project "$2"
+        ;;
+    "ni" )
+        new_issue
+        ;;
+    "nb" )
+        new_branch "$2"
+        ;;
+    "nmr" )
+        new_merge_request "$2" "$3" "$4"
+        ;;
+esac
