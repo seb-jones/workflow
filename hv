@@ -1,0 +1,110 @@
+#!/bin/bash -x
+
+ACCESS_TOKEN="2296783.pt._hMMcblHJJnRc9W1IscXBQTV5YZubZl0LtAZ7Wd8LBjywW-zr5nigXW0Ev3BGrhBNBfxRqHioAccH7Rn8LwtnA"
+
+ACCOUNT_ID="1283044"
+
+CURRENT_PROJECT_FILE=".current-project"
+
+CURRENT_TASK_FILE=".current-task"
+
+function get() {
+    curl --silent "$1" \
+      -H "Authorization: Bearer $ACCESS_TOKEN" \
+      -H "Harvest-Account-Id: $ACCOUNT_ID" \
+      -H "User-Agent: Test App (therealsebshady@googlemail.com)"
+}
+
+function post() {
+    curl -v "$1" \
+      -H "Authorization: Bearer $ACCESS_TOKEN" \
+      -H "Harvest-Account-Id: $ACCOUNT_ID" \
+      -H "User-Agent: Test App (therealsebshady@googlemail.com)" \
+      -X POST \
+      -H "Content-Type: application/json" \
+      -d "$2"
+}
+
+function start_timing() {
+    CURRENT_PROJECT=$(get_current_project)
+    CURRENT_TASK=$(get_current_task)
+    DATE=$(date +%F)
+
+    DATA=$(cat <<JSON
+{
+    "project_id": $CURRENT_PROJECT,
+    "task_id": $CURRENT_TASK,
+    "spent_date": "$DATE",
+    "notes":"$1",
+    "external_reference": {
+        "permalink": "https://sebj.co.uk"
+    }
+}
+JSON
+)
+
+    post "https://api.harvestapp.com/v2/time_entries" "$DATA" | jq '.'
+}
+
+function list_projects() {
+    get "https://api.harvestapp.com/v2/projects" | \
+        jq --raw-output '.projects[] | (.id | tostring) + " " + .name'
+}
+
+function list_tasks() {
+    get "https://api.harvestapp.com/v2/tasks" | \
+        jq --raw-output '.tasks[] | (.id | tostring) + " " + .name'
+}
+
+function get_current_user() {
+    get "https://api.harvestapp.com/v2/users/me"
+}
+
+function get_current_project() {
+    if [[ -f "$CURRENT_PROJECT_FILE" ]]; then
+        cat "$CURRENT_PROJECT_FILE"
+    fi
+}
+
+function set_current_project() {
+    echo "$1" > "$CURRENT_PROJECT_FILE"
+}
+
+function get_current_task() {
+    if [[ -f "$CURRENT_TASK_FILE" ]]; then
+        cat "$CURRENT_TASK_FILE"
+    fi
+}
+
+function set_current_task() {
+    echo "$1" > "$CURRENT_TASK_FILE"
+}
+
+case $1 in
+    "p" )
+        list_projects
+        ;;
+    "t" )
+        list_tasks
+        ;;
+
+    "cp" )
+        get_current_project
+        ;;
+
+    "sp" )
+        set_current_project "$2"
+        ;;
+
+    "ct" )
+        get_current_task
+        ;;
+
+    "st" )
+        set_current_task "$2"
+        ;;
+
+    "sti" )
+        start_timing "$2"
+        ;;
+esac
