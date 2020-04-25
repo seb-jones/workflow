@@ -31,19 +31,24 @@ function start_timing() {
     DATE=$(date +%F)
 
     DATA=$(cat <<JSON
-{
     "project_id": $CURRENT_PROJECT,
     "task_id": $CURRENT_TASK,
     "spent_date": "$DATE",
-    "notes":"$1",
-    "external_reference": {
-        "permalink": "https://sebj.co.uk"
-    }
-}
+    "notes":"$1"
 JSON
 )
 
-    post "https://api.harvestapp.com/v2/time_entries" "$DATA" | jq '.'
+    if [[ ! -z $2 ]]; then
+        DATA=$(cat <<JSON
+    $DATA,
+    "external_reference": {
+        "permalink": "$2"
+    }
+JSON
+)
+    fi
+
+    post "https://api.harvestapp.com/v2/time_entries" "{$DATA}" | jq '.'
 }
 
 function list_projects() {
@@ -105,6 +110,6 @@ case $1 in
         ;;
 
     "sti" )
-        start_timing "$2"
+        start_timing "$2" "$3"
         ;;
 esac
