@@ -120,7 +120,7 @@ function clear_cache() {
 #
 
 if [[ $# -eq 0 ]]; then
-    printf "Usage: %s COMMAND [OPTIONS]." $(basename "$0")
+    printf "Usage: %s COMMAND [OPTIONS].\n" $(basename "$0")
     echo ""
     echo "Available Commands:"
     echo ""
