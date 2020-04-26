@@ -47,8 +47,8 @@ function post() {
 }
 
 function start_timing() {
-    CURRENT_PROJECT=$(get_current_project)
-    CURRENT_TASK=$(get_current_task)
+    CURRENT_PROJECT=$(cat $CURRENT_PROJECT_FILE)
+    CURRENT_TASK=$(cat $CURRENT_TASK_FILE)
     DATE=$(date +%F)
 
     DATA=$(cat \
@@ -107,7 +107,19 @@ function get_current_task() {
 }
 
 function set_current_task() {
-    echo "$1" > "$CURRENT_TASK_FILE"
+    ORIGINAL_IFS=$IFS
+    IFS=$'\n'
+
+    TASKS=$(jq -r ".tasks[] | (.id | tostring) + \"    \" + .name" "$TASK_CACHE_FILE" | grep -i "$1" )
+
+    select TASK in $TASKS
+    do
+        break
+    done
+
+    TASK=$(echo "$TASK" | cut -d " " -f 1)
+
+    echo "$TASK" > "$CURRENT_TASK_FILE"
 }
 
 function clear_cache() {
