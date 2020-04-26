@@ -120,17 +120,18 @@ function clear_cache() {
 #
 
 if [[ $# -eq 0 ]]; then
-    printf "Usage: %s COMMAND [OPTIONS].\n\n" "$0"
-    printf "Availble Commands:\n\n"
-    printf "cc\t\tClear cache.\n"
-    printf "lp\t\tList available projects.\n"
-    printf "lt\t\tList available tasks.\n"
-    printf "gcp\t\tGet the ID of the current project.\n"
-    printf "scp PROJECT_ID\tSet the current project to PROJECT_ID.\n"
-    printf "gct\t\tGet the ID of the current task.\n"
-    printf "sct TASK_ID\tSet the current task to TASK_ID.\n"
-    printf "st  NOTES [URL]\tStart a new timer on the current project and\n"
-    printf "\t\tcurrent task with NOTES and optionally linked to [URL].\n" 
+    printf "Usage: %s COMMAND [OPTIONS]." $(basename "$0")
+    echo ""
+    echo "Available Commands:"
+    echo ""
+    echo "clear-cache, cc                       Clear cache"
+    echo "list-projects, lp                     List available projects"
+    echo "list-tasks, lt                        List available tasks"
+    echo "get-current-project, gcp              Get the ID of the current project"
+    echo "set-current-project, scp  PROJECT_ID  Set the current project"
+    echo "get-current-task, gct                 Get the ID of the current task"
+    echo "set-current-task, sct     TASK_ID     Set the current task"
+    echo "start-timing, st          NOTES [URL] Start a new timer on the current project and current task with NOTES and optionally linked to [URL]" 
     exit 1
 fi
 
