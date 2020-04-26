@@ -88,7 +88,9 @@ function get_current_user() {
 
 function get_current_project() {
     if [[ -f "$CURRENT_PROJECT_FILE" ]]; then
-        cat "$CURRENT_PROJECT_FILE"
+        PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
+
+        jq --raw-output ".projects[] | select(.id == $PROJECT_ID) | (.id | tostring) + \" \" + .name" "$PROJECT_CACHE_FILE"
     fi
 }
 
@@ -98,7 +100,9 @@ function set_current_project() {
 
 function get_current_task() {
     if [[ -f "$CURRENT_TASK_FILE" ]]; then
-        cat "$CURRENT_TASK_FILE"
+        TASK_ID=$(cat "$CURRENT_TASK_FILE")
+
+        jq --raw-output ".tasks[] | select(.id == $TASK_ID) | (.id | tostring) + \" \" + .name" "$TASK_CACHE_FILE"
     fi
 }
 
