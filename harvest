@@ -148,23 +148,18 @@ case $1 in
     "lt" )
         list_tasks
         ;;
-
     "gcp" )
         get_current_project
         ;;
-
     "scp" )
         set_current_project "$2"
         ;;
-
     "gct" )
         get_current_task
         ;;
-
     "sct" )
         set_current_task "$2"
         ;;
-
     "st" )
         start_timing "$2" "$3"
         ;;
