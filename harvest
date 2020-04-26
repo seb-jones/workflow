@@ -51,22 +51,24 @@ function start_timing() {
     CURRENT_TASK=$(get_current_task)
     DATE=$(date +%F)
 
-    DATA=$(cat <<JSON
+    DATA=$(cat \
+<<JSON
     "project_id": $CURRENT_PROJECT,
     "task_id": $CURRENT_TASK,
     "spent_date": "$DATE",
     "notes":"$1"
 JSON
-)
+    )
 
     if [[ ! -z $2 ]]; then
-        DATA=$(cat <<JSON
+        DATA=$(cat \
+<<JSON
     $DATA,
     "external_reference": {
         "permalink": "$2"
     }
 JSON
-)
+        )
     fi
 
     post "$HOSTNAME/time_entries" "{$DATA}"
