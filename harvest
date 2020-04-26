@@ -141,28 +141,28 @@ if [[ ! -f $TASK_CACHE_FILE ]]; then
 fi
 
 case $1 in
-    "cc" )
+    "clear-cache" | "cc" )
         clear_cache
         ;;
-    "lp" )
+    "list-projects" | "lp" )
         list_projects
         ;;
-    "lt" )
+    "list-tasks" | "lt" )
         list_tasks
         ;;
-    "gcp" )
+    "get-current-project" | "gcp" )
         get_current_project
         ;;
-    "scp" )
+    "set-current-project" | "scp" )
         set_current_project "$2"
         ;;
-    "gct" )
+    "get-current-task" | "gct" )
         get_current_task
         ;;
-    "sct" )
+    "set-current-task" | "sct" )
         set_current_task "$2"
         ;;
-    "st" )
+    "start-timing" | "st" )
         start_timing "$2" "$3"
         ;;
 esac
