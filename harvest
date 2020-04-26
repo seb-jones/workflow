@@ -1,32 +1,43 @@
-#!/bin/bash -x
+#!/bin/bash
 
 #
 # GLOBAL VARIABLES
 #
 
-ACCESS_TOKEN="2296783.pt._hMMcblHJJnRc9W1IscXBQTV5YZubZl0LtAZ7Wd8LBjywW-zr5nigXW0Ev3BGrhBNBfxRqHioAccH7Rn8LwtnA"
-
-ACCOUNT_ID="1283044"
+ACCESS_TOKEN=""
+ACCOUNT_ID=""
 
 BASE_DIRECTORY=$(dirname "$0")
 
-CURRENT_PROJECT_FILE="$BASE_DIRECTORY/.current-project"
+HOSTNAME="https://api.harvestapp.com/v2"
 
+CREDENTIALS_FILE="$BASE_DIRECTORY/.credentials/harvest.json"
+PROJECT_CACHE_FILE="$BASE_DIRECTORY/.cache/harvest-projects.json"
+TASK_CACHE_FILE="$BASE_DIRECTORY/.cache/harvest-tasks.json"
+CURRENT_PROJECT_FILE="$BASE_DIRECTORY/.current-project"
 CURRENT_TASK_FILE="$BASE_DIRECTORY/.current-task"
 
 #
 # FUNCTIONS
 #
 
+function load_credentials() {
+    CREDENTIALS_JSON=$(cat "$CREDENTIALS_FILE")
+
+    ACCESS_TOKEN=$(echo "$CREDENTIALS_JSON" | jq -r '.access_token')
+
+    ACCOUNT_ID=$(echo "$CREDENTIALS_JSON" | jq -r '.account_id')
+}
+
 function get() {
-    curl --silent "$1" \
+    curl --no-progress-meter "$1" \
       -H "Authorization: Bearer $ACCESS_TOKEN" \
       -H "Harvest-Account-Id: $ACCOUNT_ID" \
       -H "User-Agent: Test App (therealsebshady@googlemail.com)"
 }
 
 function post() {
-    curl --verbose "$1" \
+    curl --no-progress-meter "$1" \
       -H "Authorization: Bearer $ACCESS_TOKEN" \
       -H "Harvest-Account-Id: $ACCOUNT_ID" \
       -H "User-Agent: Test App (therealsebshady@googlemail.com)" \
@@ -58,21 +69,19 @@ JSON
 )
     fi
 
-    post "https://api.harvestapp.com/v2/time_entries" "{$DATA}" | jq '.'
+    post "$HOSTNAME/time_entries" "{$DATA}"
 }
 
 function list_projects() {
-    get "https://api.harvestapp.com/v2/projects" | \
-        jq --raw-output '.projects[] | (.id | tostring) + " " + .name'
+    jq --raw-output '.projects[] | (.id | tostring) + " " + .name' "$PROJECT_CACHE_FILE"
 }
 
 function list_tasks() {
-    get "https://api.harvestapp.com/v2/tasks" | \
-        jq --raw-output '.tasks[] | (.id | tostring) + " " + .name'
+    jq --raw-output '.tasks[] | (.id | tostring) + " " + .name' "$TASK_CACHE_FILE"
 }
 
 function get_current_user() {
-    get "https://api.harvestapp.com/v2/users/me"
+    get "$HOSTNAME/users/me"
 }
 
 function get_current_project() {
@@ -107,10 +116,20 @@ if [[ $# -eq 0 ]]; then
     printf "gcp\t\tGet the ID of the current project.\n"
     printf "scp PROJECT_ID\tSet the current project to PROJECT_ID.\n"
     printf "gct\t\tGet the ID of the current task.\n"
-    printf "sct TASK_ID\tSet the current task to TASK_ID.\n" exit 1
+    printf "sct TASK_ID\tSet the current task to TASK_ID.\n"
     printf "st  NOTES [URL]\tStart a new timer on the current project and\n"
     printf "\t\tcurrent task with NOTES and optionally linked to [URL].\n" 
     exit 1
+fi
+
+load_credentials
+
+if [[ ! -f $PROJECT_CACHE_FILE ]]; then
+    get "$HOSTNAME/projects" > $PROJECT_CACHE_FILE
+fi
+
+if [[ ! -f $TASK_CACHE_FILE ]]; then
+    get "$HOSTNAME/tasks" > $TASK_CACHE_FILE
 fi
 
 case $1 in
