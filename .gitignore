@@ -2,3 +2,6 @@
 .current-task
 .gitlab-project
 .gitlab-user
+
+.cache/
+.credentials/
