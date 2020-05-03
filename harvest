@@ -46,6 +46,54 @@ function post() {
       -d "$2"
 }
 
+function list_projects() {
+    jq --raw-output ".[] | (.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t 
+}
+
+function get_current_project() {
+    if [[ -f "$CURRENT_PROJECT_FILE" ]]; then
+        PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
+
+        jq --raw-output ".[] | select(.id == $PROJECT_ID) | (.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t
+    fi
+}
+
+function set_current_project() {
+    echo "$1" > "$CURRENT_PROJECT_FILE"
+}
+
+function list_tasks() {
+    if [[ -f "$CURRENT_PROJECT_FILE" ]]; then
+        PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
+
+        jq --raw-output ".[] | select(.id == $PROJECT_ID) | .task_assignments[] | (.task.id | tostring) + \"\t\" + .task.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t
+    fi
+}
+
+function get_current_task() {
+    if [[ -f "$CURRENT_TASK_FILE" ]]; then
+        TASK_ID=$(cat "$CURRENT_TASK_FILE")
+
+        jq --raw-output ".tasks[] | select(.id == $TASK_ID) | (.id | tostring) + \" \" + .name" "$TASK_CACHE_FILE"
+    fi
+}
+
+function set_current_task() {
+    ORIGINAL_IFS=$IFS
+    IFS=$'\n'
+
+    TASKS=$(jq -r ".tasks[] | (.id | tostring) + \"    \" + .name" "$TASK_CACHE_FILE" | grep -i "$1" )
+
+    select TASK in $TASKS
+    do
+        break
+    done
+
+    TASK=$(echo "$TASK" | cut -d " " -f 1)
+
+    echo "$TASK" > "$CURRENT_TASK_FILE"
+}
+
 function start_timing() {
     CURRENT_PROJECT=$(cat $CURRENT_PROJECT_FILE)
     CURRENT_TASK=$(cat $CURRENT_TASK_FILE)
@@ -72,54 +120,6 @@ JSON
     fi
 
     post "$HOSTNAME/time_entries" "{$DATA}"
-}
-
-function list_projects() {
-    jq --raw-output ".[] | (.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t 
-}
-
-function list_tasks() {
-    jq --raw-output '.tasks[] | (.id | tostring) + " " + .name' "$TASK_CACHE_FILE"
-}
-
-function get_current_user() {
-    get "$HOSTNAME/users/me"
-}
-
-function get_current_project() {
-    if [[ -f "$CURRENT_PROJECT_FILE" ]]; then
-        PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
-
-        jq --raw-output ".[] | select(.id == $PROJECT_ID) | (.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t
-    fi
-}
-
-function set_current_project() {
-    echo "$1" > "$CURRENT_PROJECT_FILE"
-}
-
-function get_current_task() {
-    if [[ -f "$CURRENT_TASK_FILE" ]]; then
-        TASK_ID=$(cat "$CURRENT_TASK_FILE")
-
-        jq --raw-output ".tasks[] | select(.id == $TASK_ID) | (.id | tostring) + \" \" + .name" "$TASK_CACHE_FILE"
-    fi
-}
-
-function set_current_task() {
-    ORIGINAL_IFS=$IFS
-    IFS=$'\n'
-
-    TASKS=$(jq -r ".tasks[] | (.id | tostring) + \"    \" + .name" "$TASK_CACHE_FILE" | grep -i "$1" )
-
-    select TASK in $TASKS
-    do
-        break
-    done
-
-    TASK=$(echo "$TASK" | cut -d " " -f 1)
-
-    echo "$TASK" > "$CURRENT_TASK_FILE"
 }
 
 function clear_cache() {
