@@ -82,14 +82,18 @@ function set_current_task() {
     ORIGINAL_IFS=$IFS
     IFS=$'\n'
 
-    TASKS=$(jq -r ".tasks[] | (.id | tostring) + \"    \" + .name" "$TASK_CACHE_FILE" | grep -i "$1" )
+    TASKS=$(list_tasks)
+
+    if [[ -n "$1" ]]; then
+        TASKS=$(echo "$TASKS" | grep -i "$1")
+    fi
 
     select TASK in $TASKS
     do
         break
     done
 
-    TASK=$(echo "$TASK" | cut -d " " -f 1)
+    TASK=$(echo "$TASK" | cut -d $'\t' -f 1)
 
     echo "$TASK" > "$CURRENT_TASK_FILE"
 }
