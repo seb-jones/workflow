@@ -33,14 +33,14 @@ function get() {
     curl "$1" \
       -H "Authorization: Bearer $ACCESS_TOKEN" \
       -H "Harvest-Account-Id: $ACCOUNT_ID" \
-      -H "User-Agent: Test App (therealsebshady@googlemail.com)"
+      -H "User-Agent: Test App (jones.seb95@googlemail.com)"
 }
 
 function post() {
     curl "$1" \
       -H "Authorization: Bearer $ACCESS_TOKEN" \
       -H "Harvest-Account-Id: $ACCOUNT_ID" \
-      -H "User-Agent: Test App (therealsebshady@googlemail.com)" \
+      -H "User-Agent: Test App (jones.seb95@googlemail.com)" \
       -X POST \
       -H "Content-Type: application/json" \
       -d "$2"
@@ -75,7 +75,7 @@ JSON
 }
 
 function list_projects() {
-    jq --raw-output '.[] | .client.name + " " + (.project.id | tostring) + " " + .project.name' "$PROJECT_CACHE_FILE"
+    jq --raw-output ".[] | (.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t 
 }
 
 function list_tasks() {
@@ -90,7 +90,7 @@ function get_current_project() {
     if [[ -f "$CURRENT_PROJECT_FILE" ]]; then
         PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
 
-        jq --raw-output ".projects[] | select(.id == $PROJECT_ID) | (.id | tostring) + \" \" + .name" "$PROJECT_CACHE_FILE"
+        jq --raw-output ".[] | select(.id == $PROJECT_ID) | (.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t
     fi
 }
 
