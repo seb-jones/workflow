@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 #
 # GLOBAL VARIABLES
@@ -7,12 +7,14 @@
 HOSTNAME="https://api.harvestapp.com/v2"
 
 BASE_DIRECTORY=$(dirname "$0")
+CREDENTIALS_DIRECTORY="$BASE_DIRECTORY/.credentials"
+CACHE_DIRECTORY="$BASE_DIRECTORY/.cache"
+STATE_DIRECTORY="$BASE_DIRECTORY/.state"
 
-CREDENTIALS_FILE="$BASE_DIRECTORY/.credentials/harvest.json"
-PROJECT_CACHE_FILE="$BASE_DIRECTORY/.cache/harvest-projects.json"
-TASK_CACHE_FILE="$BASE_DIRECTORY/.cache/harvest-tasks.json"
-CURRENT_PROJECT_FILE="$BASE_DIRECTORY/.current-project"
-CURRENT_TASK_FILE="$BASE_DIRECTORY/.current-task"
+CREDENTIALS_FILE="$CREDENTIALS_DIRECTORY/harvest.json"
+PROJECT_CACHE_FILE="$CACHE_DIRECTORY/harvest-projects.json"
+CURRENT_PROJECT_FILE="$STATE_DIRECTORY/.current-project-id"
+CURRENT_TASK_FILE="$STATE_DIRECTORY/.current-task-id"
 
 ACCESS_TOKEN=""
 ACCOUNT_ID=""
@@ -37,7 +39,7 @@ function get() {
 }
 
 function post() {
-    curl --verbose "$1" \
+    curl "$1" \
       -H "Authorization: Bearer $ACCESS_TOKEN" \
       -H "Harvest-Account-Id: $ACCOUNT_ID" \
       -H "User-Agent: Test App (jones.seb95@googlemail.com)" \
@@ -90,9 +92,10 @@ function list_tasks() {
 
 function get_current_task() {
     if [[ -f "$CURRENT_TASK_FILE" ]]; then
+        PROJECT_ID=$(cat $CURRENT_PROJECT_FILE)
         TASK_ID=$(cat "$CURRENT_TASK_FILE")
 
-        jq --raw-output ".tasks[] | select(.id == $TASK_ID) | (.id | tostring) + \" \" + .name" "$TASK_CACHE_FILE"
+        jq --raw-output ".[] | select(.project.id == $PROJECT_ID) | .task_assignments[] | select(.task.id == $TASK_ID) | (.task.id | tostring) + \"\t\" + .task.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t
     fi
 }
 
@@ -119,14 +122,14 @@ function set_current_task() {
 }
 
 function start_timing() {
-    CURRENT_PROJECT=$(cat $CURRENT_PROJECT_FILE)
-    CURRENT_TASK=$(cat $CURRENT_TASK_FILE)
+    CURRENT_PROJECT_ID=$(cat $CURRENT_PROJECT_FILE)
+    CURRENT_TASK_ID=$(cat $CURRENT_TASK_FILE)
     DATE=$(date +%F)
 
     DATA=$(cat \
 <<JSON
-    "project_id": $CURRENT_PROJECT,
-    "task_id": $CURRENT_TASK,
+    "project_id": $CURRENT_PROJECT_ID,
+    "task_id": $CURRENT_TASK_ID,
     "spent_date": "$DATE",
     "notes":"$1"
 JSON
@@ -191,6 +194,18 @@ if [[ $# -eq 0 ]]; then
     echo "set-current-task, sct     TASK_ID     Set the current task"
     echo "start-timing, st          NOTES [URL] Start a new timer on the current project and current task with NOTES and optionally linked to [URL]" 
     exit 1
+fi
+
+if [[ ! -d "$CREDENTIALS_DIRECTORY" ]]; then
+    mkdir -p "$CREDENTIALS_DIRECTORY"
+fi
+
+if [[ ! -d "$CACHE_DIRECTORY" ]]; then
+    mkdir -p "$CACHE_DIRECTORY"
+fi
+
+if [[ ! -d "$STATE_DIRECTORY" ]]; then
+    mkdir -p "$STATE_DIRECTORY"
 fi
 
 if [[ $1 == "clear-cache" || $1 == "cc" ]]; then
