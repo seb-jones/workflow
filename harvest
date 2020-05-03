@@ -163,8 +163,6 @@ function cache_projects() {
 
         get "$NEXT_PAGE" > "$TEMP"
 
-        jq '.project_assignments | length' "$TEMP"
-
         jq '.project_assignments[]' "$TEMP" >> "$PROJECT_CACHE_FILE"
 
         NEXT_PAGE=$(jq -r '.links.next' "$TEMP")
