@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 #
 # GLOBAL VARIABLES
@@ -37,7 +37,7 @@ function get() {
 }
 
 function post() {
-    curl "$1" \
+    curl --verbose "$1" \
       -H "Authorization: Bearer $ACCESS_TOKEN" \
       -H "Harvest-Account-Id: $ACCOUNT_ID" \
       -H "User-Agent: Test App (jones.seb95@googlemail.com)" \
@@ -47,26 +47,44 @@ function post() {
 }
 
 function list_projects() {
-    jq --raw-output ".[] | (.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t 
+    jq --raw-output ".[] | (.project.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t 
 }
 
 function get_current_project() {
     if [[ -f "$CURRENT_PROJECT_FILE" ]]; then
         PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
 
-        jq --raw-output ".[] | select(.id == $PROJECT_ID) | (.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t
+        jq --raw-output ".[] | select(.project.id == $PROJECT_ID) | (.project.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t
     fi
 }
 
 function set_current_project() {
-    echo "$1" > "$CURRENT_PROJECT_FILE"
+    ORIGINAL_IFS=$IFS
+    IFS=$'\n'
+
+    PROJECTS=$(list_projects)
+
+    if [[ -n "$1" ]]; then
+        PROJECTS=$(echo "$PROJECTS" | grep -i "$1")
+    fi
+
+    select PROJECT in $PROJECTS
+    do
+        break
+    done
+
+    IFS="$ORIGINAL_IFS"
+
+    PROJECT=$(echo "$PROJECT" | awk '{ print $1 }')
+
+    echo "$PROJECT" > "$CURRENT_PROJECT_FILE"
 }
 
 function list_tasks() {
     if [[ -f "$CURRENT_PROJECT_FILE" ]]; then
         PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
 
-        jq --raw-output ".[] | select(.id == $PROJECT_ID) | .task_assignments[] | (.task.id | tostring) + \"\t\" + .task.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t
+        jq --raw-output ".[] | select(.project.id == $PROJECT_ID) | .task_assignments[] | (.task.id | tostring) + \"\t\" + .task.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t
     fi
 }
 
@@ -93,7 +111,9 @@ function set_current_task() {
         break
     done
 
-    TASK=$(echo "$TASK" | cut -d $'\t' -f 1)
+    IFS="$ORIGINAL_IFS"
+
+    TASK=$(echo "$TASK" | awk '{ print $1 }')
 
     echo "$TASK" > "$CURRENT_TASK_FILE"
 }
