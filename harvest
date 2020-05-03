@@ -30,14 +30,14 @@ function load_credentials() {
 }
 
 function get() {
-    curl --no-progress-meter "$1" \
+    curl "$1" \
       -H "Authorization: Bearer $ACCESS_TOKEN" \
       -H "Harvest-Account-Id: $ACCOUNT_ID" \
       -H "User-Agent: Test App (therealsebshady@googlemail.com)"
 }
 
 function post() {
-    curl --no-progress-meter "$1" \
+    curl "$1" \
       -H "Authorization: Bearer $ACCESS_TOKEN" \
       -H "Harvest-Account-Id: $ACCOUNT_ID" \
       -H "User-Agent: Test App (therealsebshady@googlemail.com)" \
@@ -75,7 +75,7 @@ JSON
 }
 
 function list_projects() {
-    jq --raw-output '.projects[] | (.id | tostring) + " " + .name' "$PROJECT_CACHE_FILE"
+    jq --raw-output '.[] | .client.name + " " + (.project.id | tostring) + " " + .project.name' "$PROJECT_CACHE_FILE"
 }
 
 function list_tasks() {
@@ -124,7 +124,29 @@ function set_current_task() {
 
 function clear_cache() {
     rm -f "$PROJECT_CACHE_FILE"
-    rm -f "$TASK_CACHE_FILE"
+}
+
+function cache_projects() {
+    rm -f "$PROJECT_CACHE_FILE"
+
+    NEXT_PAGE="$HOSTNAME/users/me/project_assignments"
+
+    while [[ "$NEXT_PAGE" != "null" ]]; do
+        TEMP=$(mktemp)
+
+        get "$NEXT_PAGE" > "$TEMP"
+
+        jq '.project_assignments | length' "$TEMP"
+
+        jq '.project_assignments[]' "$TEMP" >> "$PROJECT_CACHE_FILE"
+
+        NEXT_PAGE=$(jq -r '.links.next' "$TEMP")
+      
+    done
+
+    TEMP=$(mktemp)
+    jq -s '.' "$PROJECT_CACHE_FILE" > "$TEMP"
+    cp "$TEMP" "$PROJECT_CACHE_FILE"
 }
 
 #
@@ -147,20 +169,20 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
+if [[ $1 == "clear-cache" || $1 == "cc" ]]; then
+    clear_cache
+    exit 0
+fi
+
 load_credentials
 
 if [[ ! -f $PROJECT_CACHE_FILE ]]; then
-    get "$HOSTNAME/projects" > $PROJECT_CACHE_FILE
-fi
-
-if [[ ! -f $TASK_CACHE_FILE ]]; then
-    get "$HOSTNAME/tasks" > $TASK_CACHE_FILE
+    echo "Caching harvest projects..."
+    cache_projects
+    echo "Cached harvest projects."
 fi
 
 case $1 in
-    "clear-cache" | "cc" )
-        clear_cache
-        ;;
     "list-projects" | "lp" )
         list_projects
         ;;
