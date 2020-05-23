@@ -13,8 +13,8 @@ STATE_DIRECTORY="$BASE_DIRECTORY/.state"
 
 CREDENTIALS_FILE="$CREDENTIALS_DIRECTORY/harvest.json"
 PROJECT_CACHE_FILE="$CACHE_DIRECTORY/harvest-projects.json"
-CURRENT_PROJECT_FILE="$STATE_DIRECTORY/.current-project-id"
-CURRENT_TASK_FILE="$STATE_DIRECTORY/.current-task-id"
+CURRENT_PROJECT_FILE="$STATE_DIRECTORY/harvest-project-id"
+CURRENT_TASK_FILE="$STATE_DIRECTORY/harvest-task-id"
 
 ACCESS_TOKEN=""
 ACCOUNT_ID=""
@@ -24,10 +24,24 @@ ACCOUNT_ID=""
 #
 
 function load_credentials() {
+    if [[ ! -f "$CREDENTIALS_FILE" ]]; then
+        read -s -p "Harvest Access Token: "
+        ACCESS_TOKEN=$REPLY
+        echo ""
+
+        read -s -p "Harvest Account ID: "
+        ACCOUNT_ID=$REPLY
+        echo ""
+
+        echo "{ \"access_token\": \"$ACCESS_TOKEN\", \"account_id\": \"$ACCOUNT_ID\" }" | \
+            jq  > "$CREDENTIALS_FILE"
+
+        return
+    fi
+
     CREDENTIALS_JSON=$(cat "$CREDENTIALS_FILE")
 
     ACCESS_TOKEN=$(echo "$CREDENTIALS_JSON" | jq -r '.access_token')
-
     ACCOUNT_ID=$(echo "$CREDENTIALS_JSON" | jq -r '.account_id')
 }
 
@@ -187,9 +201,9 @@ if [[ $# -eq 0 ]]; then
     echo "list-projects, lp                     List available projects"
     echo "list-tasks, lt                        List available tasks"
     echo "get-current-project, gcp              Get the ID of the current project"
-    echo "set-current-project, scp  PROJECT_ID  Set the current project"
-    echo "get-current-task, gct                 Get the ID of the current task"
-    echo "set-current-task, sct     TASK_ID     Set the current task"
+    echo "set-current-project, scp  [SEARCH]    Select current project from a menu. Optionally passes [SEARCH] to grep to filter the menu items."
+    echo "get-current-task, gct                 Select current task from a menu. Optionally passes [SEARCH] to grep to filter the menu items."
+    echo "set-current-task, sct     [SEARCH]    Set the current task"
     echo "start-timing, st          NOTES [URL] Start a new timer on the current project and current task with NOTES and optionally linked to [URL]" 
     exit 1
 fi
