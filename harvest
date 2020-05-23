@@ -39,7 +39,7 @@ function load_credentials() {
         return
     fi
 
-    credentials_json=$(cat "$credentials_file")
+    local credentials_json=$(cat "$credentials_file")
 
     access_token=$(echo "$credentials_json" | jq -r '.access_token')
     account_id=$(echo "$credentials_json" | jq -r '.account_id')
@@ -68,17 +68,17 @@ function list_projects() {
 
 function get_current_project() {
     if [[ -f "$current_project_file" ]]; then
-        project_id=$(cat "$current_project_file")
+        local project_id=$(cat "$current_project_file")
 
         jq --raw-output ".[] | select(.project.id == $project_id) | (.project.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$project_cache_file" | column -s $'\t' -t
     fi
 }
 
 function set_current_project() {
-    original_ifs=$IFS
+    local original_ifs=$IFS
     IFS=$'\n'
 
-    projects=$(list_projects)
+    local projects=$(list_projects)
 
     if [[ -n "$1" ]]; then
         projects=$(echo "$projects" | grep -i "$1")
@@ -98,7 +98,7 @@ function set_current_project() {
 
 function list_tasks() {
     if [[ -f "$current_project_file" ]]; then
-        project_id=$(cat "$current_project_file")
+        local project_id=$(cat "$current_project_file")
 
         jq --raw-output ".[] | select(.project.id == $project_id) | .task_assignments[] | (.task.id | tostring) + \"\t\" + .task.name" "$project_cache_file" | column -s $'\t' -t
     fi
@@ -106,18 +106,18 @@ function list_tasks() {
 
 function get_current_task() {
     if [[ -f "$current_task_file" ]]; then
-        project_id=$(cat $current_project_file)
-        task_id=$(cat "$current_task_file")
+        local project_id=$(cat $current_project_file)
+        local task_id=$(cat "$current_task_file")
 
         jq --raw-output ".[] | select(.project.id == $project_id) | .task_assignments[] | select(.task.id == $task_id) | (.task.id | tostring) + \"\t\" + .task.name" "$project_cache_file" | column -s $'\t' -t
     fi
 }
 
 function set_current_task() {
-    original_ifs=$IFS
+    local original_ifs=$IFS
     IFS=$'\n'
 
-    tasks=$(list_tasks)
+    local tasks=$(list_tasks)
 
     if [[ -n "$1" ]]; then
         tasks=$(echo "$tasks" | grep -i "$1")
@@ -136,11 +136,11 @@ function set_current_task() {
 }
 
 function start_timing() {
-    current_project_id=$(cat $current_project_file)
-    current_task_id=$(cat $current_task_file)
-    date=$(date +%F)
+    local current_project_id=$(cat $current_project_file)
+    local current_task_id=$(cat $current_task_file)
+    local date=$(date +%F)
 
-    data=$(cat \
+    local data=$(cat \
 <<JSON
     "project_id": $current_project_id,
     "task_id": $current_task_id,
@@ -160,7 +160,7 @@ JSON
         )
     fi
 
-    temp=$(mktemp)
+    local temp=$(mktemp)
 
     post "$hostname/time_entries" "{$data}" > "$temp"
 
@@ -173,7 +173,7 @@ function clear_cache() {
 
 function handle_harvest_error() {
     if ! jq '.' "$1" &> /dev/null; then
-        cat "$temp"
+        cat "$1"
         echo ""
         exit 1
     fi
@@ -187,7 +187,9 @@ function handle_harvest_error() {
 function cache_projects() {
     rm -f "$project_cache_file"
 
-    next_page="$hostname/users/me/project_assignments"
+    local next_page="$hostname/users/me/project_assignments"
+
+    local=""
 
     while [[ "$next_page" != "null" ]]; do
         temp=$(mktemp)
@@ -199,11 +201,12 @@ function cache_projects() {
         jq '.project_assignments[]' "$temp" >> "$project_cache_file"
 
         next_page=$(jq -r '.links.next' "$temp")
-      
     done
 
     temp=$(mktemp)
+
     jq -s '.' "$project_cache_file" > "$temp"
+
     cp "$temp" "$project_cache_file"
 }
 
