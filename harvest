@@ -258,17 +258,30 @@ function cache_projects() {
 
 if [[ $# -eq 0 ]]; then
     printf "Usage: %s COMMAND [OPTIONS].\n" $(basename "$0")
-    echo ""
-    echo "Available Commands:"
-    echo ""
-    echo "clear-cache, cc                       Clear cache"
-    echo "list-projects, lp                     List available projects"
-    echo "list-tasks, lt                        List available tasks"
-    echo "get-current-project, gcp              Get the ID of the current project"
-    echo "set-current-project, scp  [SEARCH]    Select current project from a menu. Optionally passes [SEARCH] to grep to filter the menu items."
-    echo "get-current-task, gct                 Select current task from a menu. Optionally passes [SEARCH] to grep to filter the menu items."
-    echo "set-current-task, sct     [SEARCH]    Set the current task"
-    echo "start-timing, st          NOTES [URL] Start a new timer on the current project and current task with NOTES and optionally linked to [URL]" 
+    echo "
+Available Commands:
+
+clear-cache, cc                       Clear cache
+
+list-projects, lp                     List available projects
+
+list-tasks, lt                        List available tasks
+
+get-current-project, gcp              Get the ID of the current project
+
+set-current-project, scp  [SEARCH]    Select current project from a menu.
+                                      Optionally passes [SEARCH] to grep to
+                                      filter the menu items.
+
+get-current-task, gct                 Select current task from a menu. 
+                                      Optionally passes [SEARCH] to grep to
+                                      filter the menu items.
+
+set-current-task, sct     [SEARCH]    Set the current task
+
+start-timing, st          NOTES [URL] Start a new timer on the current project 
+                                      and current task with NOTES and 
+                                      optionally linked to [URL]" 
     exit 1
 fi
 
