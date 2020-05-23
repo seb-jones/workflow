@@ -160,7 +160,11 @@ JSON
         )
     fi
 
-    post "$HOSTNAME/time_entries" "{$DATA}"
+    TEMP=$(mktemp)
+
+    post "$HOSTNAME/time_entries" "{$DATA}" > "$TEMP"
+
+    handle_harvest_error "$TEMP"
 }
 
 function clear_cache() {
