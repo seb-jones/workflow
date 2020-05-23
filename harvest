@@ -33,10 +33,16 @@ function load_credentials() {
         account_id=$REPLY
         echo ""
 
-        echo "{ \"access_token\": \"$access_token\", \"account_id\": \"$account_id\" }" | \
-            jq  > "$credentials_file"
+        local data=$(cat \
+<<JSON
+{
+    "access_token": "$access_token",
+    "account_id": "$account_id"
+}
+JSON
+        )
 
-        return
+        echo "$data" | jq > "$credentials_file"
     fi
 
     local credentials_json=$(cat "$credentials_file")
