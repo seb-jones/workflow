@@ -46,14 +46,14 @@ function load_credentials() {
 }
 
 function get() {
-    curl "$1" \
+    curl --silent "$1" \
       -H "Authorization: Bearer $ACCESS_TOKEN" \
       -H "Harvest-Account-Id: $ACCOUNT_ID" \
       -H "User-Agent: Test App (jones.seb95@googlemail.com)"
 }
 
 function post() {
-    curl "$1" \
+    curl --silent "$1" \
       -H "Authorization: Bearer $ACCESS_TOKEN" \
       -H "Harvest-Account-Id: $ACCOUNT_ID" \
       -H "User-Agent: Test App (jones.seb95@googlemail.com)" \
@@ -167,6 +167,19 @@ function clear_cache() {
     rm -f "$PROJECT_CACHE_FILE"
 }
 
+function handle_harvest_error() {
+    if ! jq '.' "$1" &> /dev/null; then
+        cat "$TEMP"
+        echo ""
+        exit 1
+    fi
+
+    if [[ $(jq '.error' "$1") != "null" ]]; then
+        jq -r '.error_description' "$1" 1>&2
+        exit 1
+    fi
+}
+
 function cache_projects() {
     rm -f "$PROJECT_CACHE_FILE"
 
@@ -176,6 +189,8 @@ function cache_projects() {
         TEMP=$(mktemp)
 
         get "$NEXT_PAGE" > "$TEMP"
+
+        handle_harvest_error "$TEMP"
 
         jq '.project_assignments[]' "$TEMP" >> "$PROJECT_CACHE_FILE"
 
@@ -228,9 +243,7 @@ fi
 load_credentials
 
 if [[ ! -f $PROJECT_CACHE_FILE ]]; then
-    echo "Caching harvest projects..."
     cache_projects
-    echo "Cached harvest projects."
 fi
 
 case $1 in
