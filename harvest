@@ -69,14 +69,31 @@ function post() {
 }
 
 function list_projects() {
-    jq --raw-output ".[] | (.project.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$project_cache_file" | column -s $'\t' -t 
+        local filter=$(cat \
+<<JQ
+.[] | (.project.id | tostring) + "\t" +
+    .client.name + "\t" +
+    .project.name
+JQ
+        )
+
+    jq --raw-output "$filter" "$project_cache_file" | column -s $'\t' -t 
 }
 
 function get_current_project() {
     if [[ -f "$current_project_file" ]]; then
         local project_id=$(cat "$current_project_file")
 
-        jq --raw-output ".[] | select(.project.id == $project_id) | (.project.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$project_cache_file" | column -s $'\t' -t
+        local filter=$(cat \
+<<JQ
+.[] | select(.project.id == $project_id) |
+    (.project.id | tostring) + "\t" +
+    .client.name + "\t" +
+    .project.name
+JQ
+        )
+
+        jq --raw-output "$filter" "$project_cache_file" | column -s $'\t' -t
     fi
 }
 
@@ -106,7 +123,16 @@ function list_tasks() {
     if [[ -f "$current_project_file" ]]; then
         local project_id=$(cat "$current_project_file")
 
-        jq --raw-output ".[] | select(.project.id == $project_id) | .task_assignments[] | (.task.id | tostring) + \"\t\" + .task.name" "$project_cache_file" | column -s $'\t' -t
+        local filter=$(cat \
+<<JQ
+.[] | select(.project.id == $project_id) |
+    .task_assignments[] |
+    (.task.id | tostring) + "\t" +
+    .task.name
+JQ
+        )
+
+        jq --raw-output "$filter" "$project_cache_file" | column -s $'\t' -t
     fi
 }
 
@@ -115,7 +141,17 @@ function get_current_task() {
         local project_id=$(cat $current_project_file)
         local task_id=$(cat "$current_task_file")
 
-        jq --raw-output ".[] | select(.project.id == $project_id) | .task_assignments[] | select(.task.id == $task_id) | (.task.id | tostring) + \"\t\" + .task.name" "$project_cache_file" | column -s $'\t' -t
+        local filter=$(cat \
+<<JQ
+.[] | select(.project.id == $project_id) |
+    .task_assignments[] |
+    select(.task.id == $task_id) |
+    (.task.id | tostring) + "\t" +
+    .task.name
+JQ
+        )
+
+        jq --raw-output "$filter" "$project_cache_file" | column -s $'\t' -t
     fi
 }
 
