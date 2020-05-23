@@ -4,58 +4,58 @@
 # GLOBAL VARIABLES
 #
 
-HOSTNAME="https://api.harvestapp.com/v2"
+hostname="https://api.harvestapp.com/v2"
 
-BASE_DIRECTORY=$(dirname "$0")
-CREDENTIALS_DIRECTORY="$BASE_DIRECTORY/.credentials"
-CACHE_DIRECTORY="$BASE_DIRECTORY/.cache"
-STATE_DIRECTORY="$BASE_DIRECTORY/.state"
+base_directory=$(dirname "$0")
+credentials_directory="$base_directory/.credentials"
+cache_directory="$base_directory/.cache"
+state_directory="$base_directory/.state"
 
-CREDENTIALS_FILE="$CREDENTIALS_DIRECTORY/harvest.json"
-PROJECT_CACHE_FILE="$CACHE_DIRECTORY/harvest-projects.json"
-CURRENT_PROJECT_FILE="$STATE_DIRECTORY/harvest-project-id"
-CURRENT_TASK_FILE="$STATE_DIRECTORY/harvest-task-id"
+credentials_file="$credentials_directory/harvest.json"
+project_cache_file="$cache_directory/harvest-projects.json"
+current_project_file="$state_directory/harvest-project-id"
+current_task_file="$state_directory/harvest-task-id"
 
-ACCESS_TOKEN=""
-ACCOUNT_ID=""
+access_token=""
+account_id=""
 
 #
 # FUNCTIONS
 #
 
 function load_credentials() {
-    if [[ ! -f "$CREDENTIALS_FILE" ]]; then
+    if [[ ! -f "$credentials_file" ]]; then
         read -s -p "Harvest Access Token: "
-        ACCESS_TOKEN=$REPLY
+        access_token=$REPLY
         echo ""
 
         read -s -p "Harvest Account ID: "
-        ACCOUNT_ID=$REPLY
+        account_id=$REPLY
         echo ""
 
-        echo "{ \"access_token\": \"$ACCESS_TOKEN\", \"account_id\": \"$ACCOUNT_ID\" }" | \
-            jq  > "$CREDENTIALS_FILE"
+        echo "{ \"access_token\": \"$access_token\", \"account_id\": \"$account_id\" }" | \
+            jq  > "$credentials_file"
 
         return
     fi
 
-    CREDENTIALS_JSON=$(cat "$CREDENTIALS_FILE")
+    credentials_json=$(cat "$credentials_file")
 
-    ACCESS_TOKEN=$(echo "$CREDENTIALS_JSON" | jq -r '.access_token')
-    ACCOUNT_ID=$(echo "$CREDENTIALS_JSON" | jq -r '.account_id')
+    access_token=$(echo "$credentials_json" | jq -r '.access_token')
+    account_id=$(echo "$credentials_json" | jq -r '.account_id')
 }
 
 function get() {
     curl --silent "$1" \
-      -H "Authorization: Bearer $ACCESS_TOKEN" \
-      -H "Harvest-Account-Id: $ACCOUNT_ID" \
+      -H "Authorization: Bearer $access_token" \
+      -H "Harvest-Account-Id: $account_id" \
       -H "User-Agent: Test App (jones.seb95@googlemail.com)"
 }
 
 function post() {
     curl --silent "$1" \
-      -H "Authorization: Bearer $ACCESS_TOKEN" \
-      -H "Harvest-Account-Id: $ACCOUNT_ID" \
+      -H "Authorization: Bearer $access_token" \
+      -H "Harvest-Account-Id: $account_id" \
       -H "User-Agent: Test App (jones.seb95@googlemail.com)" \
       -X POST \
       -H "Content-Type: application/json" \
@@ -63,96 +63,96 @@ function post() {
 }
 
 function list_projects() {
-    jq --raw-output ".[] | (.project.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t 
+    jq --raw-output ".[] | (.project.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$project_cache_file" | column -s $'\t' -t 
 }
 
 function get_current_project() {
-    if [[ -f "$CURRENT_PROJECT_FILE" ]]; then
-        PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
+    if [[ -f "$current_project_file" ]]; then
+        project_id=$(cat "$current_project_file")
 
-        jq --raw-output ".[] | select(.project.id == $PROJECT_ID) | (.project.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t
+        jq --raw-output ".[] | select(.project.id == $project_id) | (.project.id | tostring) + \"\t\" + .client.name + \"\t\" + .project.name" "$project_cache_file" | column -s $'\t' -t
     fi
 }
 
 function set_current_project() {
-    ORIGINAL_IFS=$IFS
+    original_ifs=$IFS
     IFS=$'\n'
 
-    PROJECTS=$(list_projects)
+    projects=$(list_projects)
 
     if [[ -n "$1" ]]; then
-        PROJECTS=$(echo "$PROJECTS" | grep -i "$1")
+        projects=$(echo "$projects" | grep -i "$1")
     fi
 
-    select PROJECT in $PROJECTS
+    select project in $projects
     do
         break
     done
 
-    IFS="$ORIGINAL_IFS"
+    IFS="$original_ifs"
 
-    PROJECT=$(echo "$PROJECT" | awk '{ print $1 }')
+    project=$(echo "$project" | awk '{ print $1 }')
 
-    echo "$PROJECT" > "$CURRENT_PROJECT_FILE"
+    echo "$project" > "$current_project_file"
 }
 
 function list_tasks() {
-    if [[ -f "$CURRENT_PROJECT_FILE" ]]; then
-        PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
+    if [[ -f "$current_project_file" ]]; then
+        project_id=$(cat "$current_project_file")
 
-        jq --raw-output ".[] | select(.project.id == $PROJECT_ID) | .task_assignments[] | (.task.id | tostring) + \"\t\" + .task.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t
+        jq --raw-output ".[] | select(.project.id == $project_id) | .task_assignments[] | (.task.id | tostring) + \"\t\" + .task.name" "$project_cache_file" | column -s $'\t' -t
     fi
 }
 
 function get_current_task() {
-    if [[ -f "$CURRENT_TASK_FILE" ]]; then
-        PROJECT_ID=$(cat $CURRENT_PROJECT_FILE)
-        TASK_ID=$(cat "$CURRENT_TASK_FILE")
+    if [[ -f "$current_task_file" ]]; then
+        project_id=$(cat $current_project_file)
+        task_id=$(cat "$current_task_file")
 
-        jq --raw-output ".[] | select(.project.id == $PROJECT_ID) | .task_assignments[] | select(.task.id == $TASK_ID) | (.task.id | tostring) + \"\t\" + .task.name" "$PROJECT_CACHE_FILE" | column -s $'\t' -t
+        jq --raw-output ".[] | select(.project.id == $project_id) | .task_assignments[] | select(.task.id == $task_id) | (.task.id | tostring) + \"\t\" + .task.name" "$project_cache_file" | column -s $'\t' -t
     fi
 }
 
 function set_current_task() {
-    ORIGINAL_IFS=$IFS
+    original_ifs=$IFS
     IFS=$'\n'
 
-    TASKS=$(list_tasks)
+    tasks=$(list_tasks)
 
     if [[ -n "$1" ]]; then
-        TASKS=$(echo "$TASKS" | grep -i "$1")
+        tasks=$(echo "$tasks" | grep -i "$1")
     fi
 
-    select TASK in $TASKS
+    select task in $tasks
     do
         break
     done
 
-    IFS="$ORIGINAL_IFS"
+    IFS="$original_ifs"
 
-    TASK=$(echo "$TASK" | awk '{ print $1 }')
+    task=$(echo "$task" | awk '{ print $1 }')
 
-    echo "$TASK" > "$CURRENT_TASK_FILE"
+    echo "$task" > "$current_task_file"
 }
 
 function start_timing() {
-    CURRENT_PROJECT_ID=$(cat $CURRENT_PROJECT_FILE)
-    CURRENT_TASK_ID=$(cat $CURRENT_TASK_FILE)
-    DATE=$(date +%F)
+    current_project_id=$(cat $current_project_file)
+    current_task_id=$(cat $current_task_file)
+    date=$(date +%F)
 
-    DATA=$(cat \
+    data=$(cat \
 <<JSON
-    "project_id": $CURRENT_PROJECT_ID,
-    "task_id": $CURRENT_TASK_ID,
-    "spent_date": "$DATE",
+    "project_id": $current_project_id,
+    "task_id": $current_task_id,
+    "spent_date": "$date",
     "notes":"$1"
 JSON
     )
 
     if [[ ! -z $2 ]]; then
-        DATA=$(cat \
+        data=$(cat \
 <<JSON
-    $DATA,
+    $data,
     "external_reference": {
         "permalink": "$2"
     }
@@ -160,20 +160,20 @@ JSON
         )
     fi
 
-    TEMP=$(mktemp)
+    temp=$(mktemp)
 
-    post "$HOSTNAME/time_entries" "{$DATA}" > "$TEMP"
+    post "$hostname/time_entries" "{$data}" > "$temp"
 
-    handle_harvest_error "$TEMP"
+    handle_harvest_error "$temp"
 }
 
 function clear_cache() {
-    rm -f "$PROJECT_CACHE_FILE"
+    rm -f "$project_cache_file"
 }
 
 function handle_harvest_error() {
     if ! jq '.' "$1" &> /dev/null; then
-        cat "$TEMP"
+        cat "$temp"
         echo ""
         exit 1
     fi
@@ -185,26 +185,26 @@ function handle_harvest_error() {
 }
 
 function cache_projects() {
-    rm -f "$PROJECT_CACHE_FILE"
+    rm -f "$project_cache_file"
 
-    NEXT_PAGE="$HOSTNAME/users/me/project_assignments"
+    next_page="$hostname/users/me/project_assignments"
 
-    while [[ "$NEXT_PAGE" != "null" ]]; do
-        TEMP=$(mktemp)
+    while [[ "$next_page" != "null" ]]; do
+        temp=$(mktemp)
 
-        get "$NEXT_PAGE" > "$TEMP"
+        get "$next_page" > "$temp"
 
-        handle_harvest_error "$TEMP"
+        handle_harvest_error "$temp"
 
-        jq '.project_assignments[]' "$TEMP" >> "$PROJECT_CACHE_FILE"
+        jq '.project_assignments[]' "$temp" >> "$project_cache_file"
 
-        NEXT_PAGE=$(jq -r '.links.next' "$TEMP")
+        next_page=$(jq -r '.links.next' "$temp")
       
     done
 
-    TEMP=$(mktemp)
-    jq -s '.' "$PROJECT_CACHE_FILE" > "$TEMP"
-    cp "$TEMP" "$PROJECT_CACHE_FILE"
+    temp=$(mktemp)
+    jq -s '.' "$project_cache_file" > "$temp"
+    cp "$temp" "$project_cache_file"
 }
 
 #
@@ -227,16 +227,16 @@ if [[ $# -eq 0 ]]; then
     exit 1
 fi
 
-if [[ ! -d "$CREDENTIALS_DIRECTORY" ]]; then
-    mkdir -p "$CREDENTIALS_DIRECTORY"
+if [[ ! -d "$credentials_directory" ]]; then
+    mkdir -p "$credentials_directory"
 fi
 
-if [[ ! -d "$CACHE_DIRECTORY" ]]; then
-    mkdir -p "$CACHE_DIRECTORY"
+if [[ ! -d "$cache_directory" ]]; then
+    mkdir -p "$cache_directory"
 fi
 
-if [[ ! -d "$STATE_DIRECTORY" ]]; then
-    mkdir -p "$STATE_DIRECTORY"
+if [[ ! -d "$state_directory" ]]; then
+    mkdir -p "$state_directory"
 fi
 
 if [[ $1 == "clear-cache" || $1 == "cc" ]]; then
@@ -246,7 +246,7 @@ fi
 
 load_credentials
 
-if [[ ! -f $PROJECT_CACHE_FILE ]]; then
+if [[ ! -f $project_cache_file ]]; then
     cache_projects
 fi
 
