@@ -1,140 +1,221 @@
-#!/bin/bash 
+#!/bin/bash -x
 
 #
 # GLOBAL VARIABLES
 #
 
-ACCESS_TOKEN="E6EfD8E9AshAbam9xbA8"
+hostname="https://gitlab.com/api/v4"
 
-BASE_DIRECTORY=$(dirname "$0")
+base_directory=$(dirname "$0")
+credentials_directory="$base_directory/.credentials"
+cache_directory="$base_directory/.cache"
+state_directory="$base_directory/.state"
 
-CURRENT_USER_FILE="$BASE_DIRECTORY/.gitlab-user"
+credentials_file="$credentials_directory/gitlab_access_token"
+project_cache_file="$cache_directory/gitlab-projects.json"
 
-CURRENT_PROJECT_FILE="$BASE_DIRECTORY/.gitlab-project"
+response_header_temp_file="/tmp/gitlab-api-reponse-headers"
 
-USER_ID=""
+access_token=""
 
 #
 # FUNCTIONS
 #
 
-# https://stackoverflow.com/questions/47050589/create-url-friendly-slug-with-pure-bash/49035906#49035906
-function slugify () {
-    echo "$1" | iconv -t ascii//TRANSLIT | sed -r s/[~\^]+//g | sed -r s/[^a-zA-Z0-9]+/-/g | sed -r s/^-+\|-+$//g | tr A-Z a-z
+function load_credentials() {
+    if [[ ! -f "$credentials_file" ]]; then
+        read -s -p "GitLab Access Token: "
+        access_token=$REPLY
+        echo ""
+
+        echo "$access_token" > "$credentials_file"
+    fi
+
+    access_token=$(cat "$credentials_file")
 }
 
 function get() {
     curl --silent "$1" \
-      -H "Private-Token: $ACCESS_TOKEN"
+      -H "Authorization: Bearer $access_token" \
+      -H "User-Agent: Test App (jones.seb95@googlemail.com)" \
+      -D "$response_header_temp_file"
+            
 }
 
 function post() {
-    curl --verbose "$1" \
-      -H "Private-Token: $ACCESS_TOKEN" \
-      -X POST
+    curl --silent "$1" \
+      -H "Authorization: Bearer $access_token" \
+      -H "Harvest-Account-Id: $account_id" \
+      -H "User-Agent: Test App (jones.seb95@googlemail.com)" \
+      -X POST \
+      -H "Content-Type: application/json" \
+      -d "$2"
 }
 
 function list_projects() {
-    get "https://gitlab.com/api/v4/users/$USER_ID/projects" | jq -r '.[] | (.id | tostring) + " " + .name'
+        local filter=$(cat \
+<<JQ
+.[] | (.project.id | tostring) + "\t" +
+    .client.name + "\t" +
+    .project.name
+JQ
+        )
+
+    jq --raw-output "$filter" "$project_cache_file" | column -s $'\t' -t 
 }
 
 function get_current_project() {
-    if [[ -f "$CURRENT_PROJECT_FILE" ]]; then
-        cat "$CURRENT_PROJECT_FILE"
+    if [[ -f "$current_project_file" ]]; then
+        local project_id=$(cat "$current_project_file")
+
+        local filter=$(cat \
+<<JQ
+.[] | select(.project.id == $project_id) |
+    (.project.id | tostring) + "\t" +
+    .client.name + "\t" +
+    .project.name
+JQ
+        )
+
+        jq --raw-output "$filter" "$project_cache_file" | column -s $'\t' -t
     fi
 }
 
 function set_current_project() {
-    echo "$1" > "$CURRENT_PROJECT_FILE"
-}
+    local original_ifs=$IFS
+    IFS=$'\n'
 
-function new_issue() {
-    TEMP_FILE=$(mktemp)
+    local projects=$(list_projects)
 
-    "${EDITOR:-vi}" "$TEMP_FILE"
-
-    cat "$TEMP_FILE"
-
-    PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
-
-    TITLE=$(cat "$TEMP_FILE")
-
-    curl -X POST \
-     -H "Private-Token: $ACCESS_TOKEN" \
-     --data-urlencode "title=$TITLE" \
-     "https://gitlab.com/api/v4/projects/$PROJECT_ID/issues" \
-     | jq -r '(.iid | tostring) + " " + .title'
-}
-
-function new_branch() {
-    PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
-
-    NAME=$(slugify "$1")
-
-    curl -X POST \
-     -H "Private-Token: $ACCESS_TOKEN" \
-     --data-urlencode "branch=$NAME" \
-     --data-urlencode "ref=develop" \
-     "https://gitlab.com/api/v4/projects/$PROJECT_ID/repository/branches"
-
-    echo "$NAME"
-}
-
-function new_merge_request() {
-    PROJECT_ID=$(cat "$CURRENT_PROJECT_FILE")
-
-    if [[ ! -z $3 ]]; then
-        DESCRIPTION="Closes #$3"
+    if [[ -n "$1" ]]; then
+        projects=$(echo "$projects" | grep -i "$1")
     fi
 
-    curl -X POST \
-     -H "Private-Token: $ACCESS_TOKEN" \
-     --data-urlencode "source_branch=$1" \
-     --data-urlencode "target_branch=develop" \
-     --data-urlencode "title=$2" \
-     --data-urlencode "description=$DESCRIPTION" \
-     "https://gitlab.com/api/v4/projects/$PROJECT_ID/merge_requests"
+    select project in $projects
+    do
+        break
+    done
+
+    IFS="$original_ifs"
+
+    project=$(echo "$project" | awk '{ print $1 }')
+
+    echo "$project" > "$current_project_file"
+}
+
+function clear_cache() {
+    rm -f "$project_cache_file"
+}
+
+function cache_projects() {
+    local temp=$(mktemp)
+    local next_page="$hostname/projects?simple=1&membership=1&per_page=1&page=1"
+
+    rm -f "$project_cache_file"
+
+    while [[ -n "$next_page" ]]; do
+        get "$next_page" > "$temp"
+
+        jq '.[]' "$temp" >> "$project_cache_file"
+
+        local link_header=$( \
+            grep '^link:' "$response_header_temp_file" \
+        )
+
+        if echo "$link_header" | grep -q 'rel="next"'; then
+            next_page=$( \
+                echo "$link_header" | \
+                grep -oE '<.*rel="next"' | \
+                grep -oE 'https://[^>]+'
+            )
+        else
+            next_page=""
+        fi
+    done
+
+    jq -s '.' "$project_cache_file" > "$temp"
+
+    cp "$temp" "$project_cache_file"
+
+    exit 0
 }
 
 #
 # SCRIPT
 #
 
-if [[ ! -f "$CURRENT_USER_FILE" ]]; then
-    get "https://gitlab.com/api/v4/user" | jq '.id' > "$CURRENT_USER_FILE"
-fi
-
-USER_ID=$(cat "$CURRENT_USER_FILE")
-
 if [[ $# -eq 0 ]]; then
-    printf "Usage: %s COMMAND [OPTIONS].\n\n" "$0"
-    printf "Availble Commands:\n\n"
-    printf "lp\t\t\t\tList available projects.\n"
-    printf "gcp\t\t\t\tGet the ID of the current project.\n"
-    printf "scp PROJECT_ID\t\t\tSet the current project to PROJECT_ID.\n"
-    printf "ni\t\t\t\tCreate a new issue in the current project.\n"
-    printf "nb NAME\t\t\t\tCreate a new branch of develop named NAME.\n"
-    printf "nmr BRANCH TITLE ISSUE_NUMBER\tCreate a new merge request for BRANCH named TITLE that closes the issue identified by ISSUE_NUMBER.\n"
+    printf "Usage: %s COMMAND [OPTIONS].\n" $(basename "$0")
+    echo "
+Available Commands:
+
+clear-cache, cc                       Clear cache
+
+list-projects, lp                     List available projects
+
+list-tasks, lt                        List available tasks
+
+get-current-project, gcp              Get the ID of the current project
+
+set-current-project, scp  [SEARCH]    Select current project from a menu.
+                                      Optionally passes [SEARCH] to grep to
+                                      filter the menu items.
+
+get-current-task, gct                 Select current task from a menu. 
+                                      Optionally passes [SEARCH] to grep to
+                                      filter the menu items.
+
+set-current-task, sct     [SEARCH]    Set the current task
+
+start-timing, st          NOTES [URL] Start a new timer on the current project 
+                                      and current task with NOTES and 
+                                      optionally linked to [URL]" 
     exit 1
 fi
 
+if [[ ! -d "$credentials_directory" ]]; then
+    mkdir -p "$credentials_directory"
+fi
+
+if [[ ! -d "$cache_directory" ]]; then
+    mkdir -p "$cache_directory"
+fi
+
+if [[ ! -d "$state_directory" ]]; then
+    mkdir -p "$state_directory"
+fi
+
+if [[ $1 == "clear-cache" || $1 == "cc" ]]; then
+    clear_cache
+    exit 0
+fi
+
+load_credentials
+
+if [[ ! -f $project_cache_file ]]; then
+    cache_projects
+fi
+
 case $1 in
-    "lp" )
+    "list-projects" | "lp" )
         list_projects
         ;;
-    "gcp" )
+    "list-tasks" | "lt" )
+        list_tasks
+        ;;
+    "get-current-project" | "gcp" )
         get_current_project
         ;;
-    "scp" )
+    "set-current-project" | "scp" )
         set_current_project "$2"
         ;;
-    "ni" )
-        new_issue
+    "get-current-task" | "gct" )
+        get_current_task
         ;;
-    "nb" )
-        new_branch "$2"
+    "set-current-task" | "sct" )
+        set_current_task "$2"
         ;;
-    "nmr" )
-        new_merge_request "$2" "$3" "$4"
+    "start-timing" | "st" )
+        start_timing "$2" "$3"
         ;;
 esac
