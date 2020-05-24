@@ -55,9 +55,8 @@ function post() {
 function list_projects() {
         local filter=$(cat \
 <<JQ
-.[] | (.project.id | tostring) + "\t" +
-    .client.name + "\t" +
-    .project.name
+.[] | (.id | tostring) + "\t" +
+    .name_with_namespace
 JQ
         )
 
@@ -136,8 +135,6 @@ function cache_projects() {
     jq -s '.' "$project_cache_file" > "$temp"
 
     cp "$temp" "$project_cache_file"
-
-    exit 0
 }
 
 #
