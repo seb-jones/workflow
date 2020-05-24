@@ -116,6 +116,16 @@ function new_branch() {
         --data-urlencode "ref=$2"
 }
 
+function new_merge_request() {
+    current_project_id=$(cat "$current_project_file")
+
+    post "$hostname/projects/$current_project_id/merge_requests" \
+        --data-urlencode "title=$3" \
+        --data-urlencode "description=$4" \
+        --data-urlencode "source_branch=$1" \
+        --data-urlencode "target_branch=$2"
+}
+
 function clear_cache() {
     rm -f "$project_cache_file"
 }
@@ -210,5 +220,8 @@ case $1 in
         ;;
     "new-branch" | "nb" )
         new_branch "$2" "$3"
+        ;;
+    "new-merge-request" | "nmr" )
+        new_merge_request "$2" "$3" "$4" "$5"
         ;;
 esac
