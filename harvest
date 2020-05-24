@@ -231,11 +231,9 @@ function cache_projects() {
 
     local next_page="$hostname/users/me/project_assignments"
 
-    local temp=""
+    local temp=$(mktemp)
 
     while [[ "$next_page" != "null" ]]; do
-        temp=$(mktemp)
-
         get "$next_page" > "$temp"
 
         handle_harvest_error "$temp"
@@ -244,8 +242,6 @@ function cache_projects() {
 
         next_page=$(jq -r '.links.next' "$temp")
     done
-
-    temp=$(mktemp)
 
     jq -s '.' "$project_cache_file" > "$temp"
 
