@@ -13,6 +13,7 @@ state_directory="$base_directory/.state"
 
 credentials_file="$credentials_directory/gitlab_access_token"
 project_cache_file="$cache_directory/gitlab-projects.json"
+current_project_file="$state_directory/gitlab-project-id"
 
 response_header_temp_file="/tmp/gitlab-api-reponse-headers"
 
@@ -69,10 +70,9 @@ function get_current_project() {
 
         local filter=$(cat \
 <<JQ
-.[] | select(.project.id == $project_id) |
-    (.project.id | tostring) + "\t" +
-    .client.name + "\t" +
-    .project.name
+.[] | select(.id == $project_id) |
+    (.id | tostring) + "\t" +
+    .name_with_namespace
 JQ
         )
 
