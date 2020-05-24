@@ -178,7 +178,16 @@ get-current-project, gcp              Get the ID of the current project
 
 set-current-project, scp  [SEARCH]    Select current project from a menu.
                                       Optionally passes [SEARCH] to grep to
-                                      filter the menu items."
+                                      filter the menu items.
+
+new-issue, ni    TITLE [DESCRIPTION]  Create a new issue.
+
+new-branch, nb   NAME FROM            Create a new branch.
+
+new-merge-request, nmr SOURCE TARGET TITLE [DESCRIPTION]           
+                                      Create a new merge request.
+"
+
     exit 1
 fi
 
