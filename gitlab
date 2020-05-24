@@ -38,7 +38,7 @@ function load_credentials() {
 function get() {
     curl --silent "$1" \
       -H "Authorization: Bearer $access_token" \
-      -H "User-Agent: Test App (jones.seb95@googlemail.com)" \
+      -H "User-Agent: GitLab Bash Script (jones.seb95@googlemail.com)" \
       -D "$response_header_temp_file"
             
 }
@@ -46,11 +46,9 @@ function get() {
 function post() {
     curl --silent "$1" \
       -H "Authorization: Bearer $access_token" \
-      -H "Harvest-Account-Id: $account_id" \
-      -H "User-Agent: Test App (jones.seb95@googlemail.com)" \
+      -H "User-Agent: GitLab Bash Script (jones.seb95@googlemail.com)" \
       -X POST \
-      -H "Content-Type: application/json" \
-      -d "$2"
+      "${@:2}"
 }
 
 function list_projects() {
@@ -100,6 +98,14 @@ function set_current_project() {
     project=$(echo "$project" | awk '{ print $1 }')
 
     echo "$project" > "$current_project_file"
+}
+
+function new_issue() {
+    current_project_id=$(cat "$current_project_file")
+
+    post "$hostname/projects/$current_project_id/issues" \
+        --data-urlencode "title=$1" \
+        --data-urlencode "description=$2"
 }
 
 function clear_cache() {
@@ -192,5 +198,8 @@ case $1 in
         ;;
     "set-current-project" | "scp" )
         set_current_project "$2"
+        ;;
+    "new-issue" | "ni" )
+        new_issue "$2" "$3"
         ;;
 esac
