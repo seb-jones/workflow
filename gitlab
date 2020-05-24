@@ -160,8 +160,6 @@ get-current-project, gcp              Get the ID of the current project
 
 set-current-project, scp  [SEARCH]    Select current project from a menu.
                                       Optionally passes [SEARCH] to grep to
-                                      filter the menu items.
-
                                       filter the menu items."
     exit 1
 fi
