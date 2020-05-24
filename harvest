@@ -55,14 +55,14 @@ function get() {
     curl --silent "$1" \
       -H "Authorization: Bearer $access_token" \
       -H "Harvest-Account-Id: $account_id" \
-      -H "User-Agent: Test App (jones.seb95@googlemail.com)"
+      -H "User-Agent: Harvest Bash Script (jones.seb95@googlemail.com)"
 }
 
 function post() {
     curl --silent "$1" \
       -H "Authorization: Bearer $access_token" \
       -H "Harvest-Account-Id: $account_id" \
-      -H "User-Agent: Test App (jones.seb95@googlemail.com)" \
+      -H "User-Agent: Harvest Bash Script (jones.seb95@googlemail.com)" \
       -X POST \
       -H "Content-Type: application/json" \
       -d "$2"
