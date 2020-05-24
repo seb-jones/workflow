@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 #
 # GLOBAL VARIABLES
@@ -153,23 +153,13 @@ clear-cache, cc                       Clear cache
 
 list-projects, lp                     List available projects
 
-list-tasks, lt                        List available tasks
-
 get-current-project, gcp              Get the ID of the current project
 
 set-current-project, scp  [SEARCH]    Select current project from a menu.
                                       Optionally passes [SEARCH] to grep to
                                       filter the menu items.
 
-get-current-task, gct                 Select current task from a menu. 
-                                      Optionally passes [SEARCH] to grep to
-                                      filter the menu items.
-
-set-current-task, sct     [SEARCH]    Set the current task
-
-start-timing, st          NOTES [URL] Start a new timer on the current project 
-                                      and current task with NOTES and 
-                                      optionally linked to [URL]" 
+                                      filter the menu items."
     exit 1
 fi
 
@@ -200,22 +190,10 @@ case $1 in
     "list-projects" | "lp" )
         list_projects
         ;;
-    "list-tasks" | "lt" )
-        list_tasks
-        ;;
     "get-current-project" | "gcp" )
         get_current_project
         ;;
     "set-current-project" | "scp" )
         set_current_project "$2"
-        ;;
-    "get-current-task" | "gct" )
-        get_current_task
-        ;;
-    "set-current-task" | "sct" )
-        set_current_task "$2"
-        ;;
-    "start-timing" | "st" )
-        start_timing "$2" "$3"
         ;;
 esac
