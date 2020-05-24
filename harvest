@@ -231,7 +231,7 @@ function cache_projects() {
 
     local next_page="$hostname/users/me/project_assignments"
 
-    local=""
+    local temp=""
 
     while [[ "$next_page" != "null" ]]; do
         temp=$(mktemp)
