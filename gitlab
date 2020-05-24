@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 #
 # GLOBAL VARIABLES
@@ -108,6 +108,14 @@ function new_issue() {
         --data-urlencode "description=$2"
 }
 
+function new_branch() {
+    current_project_id=$(cat "$current_project_file")
+
+    post "$hostname/projects/$current_project_id/repository/branches" \
+        --data-urlencode "branch=$1" \
+        --data-urlencode "ref=$2"
+}
+
 function clear_cache() {
     rm -f "$project_cache_file"
 }
@@ -199,5 +207,8 @@ case $1 in
         ;;
     "new-issue" | "ni" )
         new_issue "$2" "$3"
+        ;;
+    "new-branch" | "nb" )
+        new_branch "$2" "$3"
         ;;
 esac
