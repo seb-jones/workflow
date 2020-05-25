@@ -10,8 +10,6 @@ function slugify () {
         tr A-Z a-z
 }
 
-# temp='/tmp/tmp.sbhdZ4NTFS'
-
 temp=$(mktemp)
 
 ${EDITOR:-vim} "$temp"
