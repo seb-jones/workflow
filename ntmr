@@ -1,0 +1,32 @@
+#!/bin/bash -x
+
+# https://stackoverflow.com/questions/47050589/create-url-friendly-slug-with-pure-bash/49035906#49035906
+function slugify () {
+    echo "$1" | iconv -t ascii//TRANSLIT | sed -r s/[~\^]+//g | sed -r s/[^a-zA-Z0-9]+/-/g | sed -r s/^-+\|-+$//g | tr A-Z a-z
+}
+
+# temp='/tmp/tmp.sbhdZ4NTFS'
+
+temp=$(mktemp)
+
+${EDITOR:-vim} "$temp"
+
+title=$(sed -n -e '1p' "$temp")
+
+description=$(sed -n -e '2,$p' "$temp")
+
+issue_json=$(gitlab new-issue "$title" "$description")
+
+issue_number=$(echo "$issue_json" | jq '.references.short')
+
+branch_name=$(slugify "$issue_number-$title")
+
+branch_json=$(gitlab new-branch "$branch_name" "develop")
+
+merge_json=$( \
+    gitlab new-merge-request \
+    "$branch_name" \
+    "develop" \
+    "$title" \
+    "Closes $issue_number"
+)
