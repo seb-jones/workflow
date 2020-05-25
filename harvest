@@ -207,6 +207,8 @@ JSON
     post "$hostname/time_entries" "{$data}" > "$temp"
 
     handle_harvest_error "$temp"
+
+    cat "$temp"
 }
 
 function clear_cache() {
