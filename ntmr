@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 
 # https://stackoverflow.com/questions/47050589/create-url-friendly-slug-with-pure-bash/49035906#49035906
 function slugify () {
@@ -22,20 +22,28 @@ description=$(sed -n -e '2,$p' "$temp")
 
 issue_json=$(gitlab new-issue "$title" "$description")
 
+echo "Created issue '$(echo "$issue_json" | jq -r '.title')'"
+
 issue_number=$(echo "$issue_json" | jq -r '.references.short')
 
 branch_name=$(slugify "$issue_number-$title")
 
 branch_json=$(gitlab new-branch "$branch_name" "develop")
 
+echo "Created branch '$(echo "$branch_json" | jq -r '.name')'"
+
 merge_json=$( \
     gitlab new-merge-request \
     "$branch_name" \
     "develop" \
-    "$title" \
+    "WIP: $title" \
     "Closes $issue_number"
 )
 
+echo "Created merge request '$(echo "$merge_json" | jq -r '.title')'"
+
 issue_url=$(echo "$issue_json" | jq -r '.web_url')
 
-harvest start-timing "$title" "$issue_url"
+timer_json=$(harvest start-timing "$title" "$issue_url")
+
+echo "Started timer '$(echo "$timer_json" | jq -r '.notes')'"
