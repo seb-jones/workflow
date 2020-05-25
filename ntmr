@@ -2,7 +2,12 @@
 
 # https://stackoverflow.com/questions/47050589/create-url-friendly-slug-with-pure-bash/49035906#49035906
 function slugify () {
-    echo "$1" | iconv -t ascii//TRANSLIT | sed -r s/[~\^]+//g | sed -r s/[^a-zA-Z0-9]+/-/g | sed -r s/^-+\|-+$//g | tr A-Z a-z
+    echo "$1" | \
+        iconv -t ascii//TRANSLIT | \
+        sed -r s/[~\^]+//g | \
+        sed -r s/[^a-zA-Z0-9]+/-/g | \
+        sed -r s/^-+\|-+$//g | \
+        tr A-Z a-z
 }
 
 # temp='/tmp/tmp.sbhdZ4NTFS'
@@ -17,7 +22,7 @@ description=$(sed -n -e '2,$p' "$temp")
 
 issue_json=$(gitlab new-issue "$title" "$description")
 
-issue_number=$(echo "$issue_json" | jq '.references.short')
+issue_number=$(echo "$issue_json" | jq -r '.references.short')
 
 branch_name=$(slugify "$issue_number-$title")
 
@@ -30,3 +35,7 @@ merge_json=$( \
     "$title" \
     "Closes $issue_number"
 )
+
+issue_url=$(echo "$issue_json" | jq -r '.web_url')
+
+harvest start-timing "$title" "$issue_url"
