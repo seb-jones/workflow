@@ -45,3 +45,7 @@ issue_url=$(echo "$issue_json" | jq -r '.web_url')
 timer_json=$(harvest start-timing "$title" "$issue_url")
 
 echo "Started timer '$(echo "$timer_json" | jq -r '.notes')'"
+
+git fetch origin
+
+git checkout -b "$branch_name" "origin/$branch_name"
