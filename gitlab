@@ -13,15 +13,32 @@ state_directory="$base_directory/.state"
 
 credentials_file="$credentials_directory/gitlab_access_token"
 project_cache_file="$cache_directory/gitlab-projects.json"
-current_project_file="$state_directory/gitlab-project-id"
 
 response_header_temp_file="/tmp/gitlab-api-reponse-headers"
 
 access_token=""
+current_project_id=""
 
 #
 # FUNCTIONS
 #
+
+function set_current_project() {
+    url=$( \
+        git remote -v | \
+        grep '(fetch)$' | \
+        cut -f 2,2 | \
+        cut -f 1,1 -d $' '
+    )
+
+    filter=$(cat \
+<<JQ
+.[] | select(.ssh_url_to_repo == "$url") | .id
+JQ
+    )
+
+    current_project_id=$(jq "$filter" "$project_cache_file")
+}
 
 function load_credentials() {
     if [[ ! -f "$credentials_file" ]]; then
@@ -40,7 +57,6 @@ function get() {
       -H "Authorization: Bearer $access_token" \
       -H "User-Agent: GitLab Bash Script (jones.seb95@googlemail.com)" \
       -D "$response_header_temp_file"
-            
 }
 
 function post() {
@@ -62,63 +78,19 @@ JQ
     jq --raw-output "$filter" "$project_cache_file" | column -s $'\t' -t 
 }
 
-function get_current_project() {
-    if [[ -f "$current_project_file" ]]; then
-        local project_id=$(cat "$current_project_file")
-
-        local filter=$(cat \
-<<JQ
-.[] | select(.id == $project_id) |
-    (.id | tostring) + "\t" +
-    .name_with_namespace
-JQ
-        )
-
-        jq --raw-output "$filter" "$project_cache_file" | column -s $'\t' -t
-    fi
-}
-
-function set_current_project() {
-    local original_ifs=$IFS
-    IFS=$'\n'
-
-    local projects=$(list_projects)
-
-    if [[ -n "$1" ]]; then
-        projects=$(echo "$projects" | grep -i "$1")
-    fi
-
-    select project in $projects
-    do
-        break
-    done
-
-    IFS="$original_ifs"
-
-    project=$(echo "$project" | awk '{ print $1 }')
-
-    echo "$project" > "$current_project_file"
-}
-
 function new_issue() {
-    current_project_id=$(cat "$current_project_file")
-
     post "$hostname/projects/$current_project_id/issues" \
         --data-urlencode "title=$1" \
         --data-urlencode "description=$2"
 }
 
 function new_branch() {
-    current_project_id=$(cat "$current_project_file")
-
     post "$hostname/projects/$current_project_id/repository/branches" \
         --data-urlencode "branch=$1" \
         --data-urlencode "ref=$2"
 }
 
 function new_merge_request() {
-    current_project_id=$(cat "$current_project_file")
-
     post "$hostname/projects/$current_project_id/merge_requests" \
         --data-urlencode "title=$3" \
         --data-urlencode "description=$4" \
@@ -174,12 +146,6 @@ clear-cache, cc                       Clear cache
 
 list-projects, lp                     List available projects
 
-get-current-project, gcp              Get the ID of the current project
-
-set-current-project, scp  [SEARCH]    Select current project from a menu.
-                                      Optionally passes [SEARCH] to grep to
-                                      filter the menu items.
-
 new-issue, ni    TITLE [DESCRIPTION]  Create a new issue.
 
 new-branch, nb   NAME FROM            Create a new branch.
@@ -214,15 +180,11 @@ if [[ ! -f $project_cache_file ]]; then
     cache_projects
 fi
 
+set_current_project
+
 case $1 in
     "list-projects" | "lp" )
         list_projects
-        ;;
-    "get-current-project" | "gcp" )
-        get_current_project
-        ;;
-    "set-current-project" | "scp" )
-        set_current_project "$2"
         ;;
     "new-issue" | "ni" )
         new_issue "$2" "$3"
