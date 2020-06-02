@@ -42,7 +42,7 @@ function load_credentials() {
 JSON
         )
 
-        echo "$data" | jq > "$credentials_file"
+        echo "$data" | jq '.' > "$credentials_file"
     fi
 
     local credentials_json=$(cat "$credentials_file")

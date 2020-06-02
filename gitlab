@@ -1,21 +1,20 @@
-#!/bin/bash
+#!/bin/bash -x
 
 #
 # GLOBAL VARIABLES
 #
-
-hostname="https://gitlab.com/api/v4"
 
 base_directory=$(dirname "$0")
 credentials_directory="$base_directory/.credentials"
 cache_directory="$base_directory/.cache"
 state_directory="$base_directory/.state"
 
-credentials_file="$credentials_directory/gitlab_access_token"
+credentials_file="$credentials_directory/gitlab.json"
 project_cache_file="$cache_directory/gitlab-projects.json"
 
 response_header_temp_file="/tmp/gitlab-api-reponse-headers"
 
+hostname=""
 access_token=""
 current_project_id=""
 
@@ -41,15 +40,35 @@ JQ
 }
 
 function load_credentials() {
+    local host=""
+
     if [[ ! -f "$credentials_file" ]]; then
+        read -p "Host: "
+        host=$REPLY
+
         read -s -p "GitLab Access Token: "
         access_token=$REPLY
         echo ""
 
-        echo "$access_token" > "$credentials_file"
+        local data=$(cat \
+<<JSON
+{
+    "host": "$host",
+    "access_token": "$access_token"
+}
+JSON
+        )
+
+        echo "$data" | jq '.' > "$credentials_file"
     fi
 
-    access_token=$(cat "$credentials_file")
+    local credentials_json=$(cat "$credentials_file")
+
+    access_token=$(echo "$credentials_json" | jq -r '.access_token')
+
+    host=$(echo "$credentials_json" | jq -r '.host')
+
+    hostname="https://$host/api/v4"
 }
 
 function get() {
